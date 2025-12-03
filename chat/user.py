@@ -1,6 +1,7 @@
 import asyncio
 
 from aiogram import Router, F
+from aiogram.utils.chat_action import ChatActionSender
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -44,27 +45,27 @@ async def handle_message(message: Message, state: FSMContext):
     
     model: Model|None = manager.availible_model
     
-    
-    if model.for_use is None:
-        for _ in range(10):
-            ok = await manager.next_model_or_no()
-            if ok:
-                model = manager.availible_model
-                break
-        else:
-            await message.answer(
-                'К сожалению, на данный момент модели недоступны. Подождите 1 день.'
-            )
-            return
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id, interval=3, initial_sleep=1):
+        if model.for_use is None:
+            for _ in range(10):
+                ok = await manager.next_model_or_no()
+                if ok:
+                    model = manager.availible_model
+                    break
+            else:
+                await message.answer(
+                    'К сожалению, на данный момент модели недоступны. Подождите 1 день.'
+                )
+                return
+            
+        response = await model.send_message(message=message.text, user_id=message.from_user.id)
+        formated = await asyncio.to_thread(convert_markdown_to_telegram, response)
         
-    response = await model.send_message(message=message.text, user_id=message.from_user.id)
-    formated = await asyncio.to_thread(convert_markdown_to_telegram, response)
-    
-    await state.clear()
-    await message.answer(
-        text=formated,
-        parse_mode='MarkdownV2'
-    )
+        await state.clear()
+        await message.answer(
+            text=formated,
+            parse_mode='MarkdownV2'
+        )
     
 
 @router.message(F.photo)
