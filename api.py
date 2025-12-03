@@ -15,7 +15,7 @@ class Memory:
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__instance.redis = aioredis.Redis(host='localhost', decode_responses=True)
+            cls.__instance.redis = aioredis.Redis(host='redis', decode_responses=True)
         
         return cls.__instance
     
@@ -107,7 +107,7 @@ class Model:
         "contents": history,
             "generationConfig": {
                 "temperature": 0.7,
-                "maxOutputTokens": 12000
+                "maxOutputTokens": 6000
             }
         }
         
@@ -139,17 +139,63 @@ class Model:
 class ModelManager:
     __instance = None
     _is_init = None
-    
+
+    RESTORE_DELAY = 60 * 60 * 24  # 24 часа
+
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-                    
         return cls.__instance
-    
+
     def __init__(self):
         if self._is_init is None:
             settings = AppSettings()
             self.__api_keys = tuple(settings.TOKENS.split(','))
-    
+
             self.classes = [Model(token) for token in self.__api_keys]
+            self.timeout = {}       # key -> model
+            self.restore_tasks = {} # key -> asyncio.Task
             self.availible_model = self.classes[0]
+
+            self._is_init = True
+
+    async def next_model_or_no(self):
+        """Выдаёт следующую модель и ставит задачу вернуть текущую через сутки"""
+        logging.info('Выдаём всем новый токен')
+        current = self.availible_model
+        logging.info(f'Убираем: {current}')
+        self.classes.remove(current)
+
+        key = current.api_key
+        self.timeout[key] = current
+
+        # Создаём фоновую задачу возврата
+        self.restore_tasks[key] = asyncio.create_task(self._auto_restore_model(key))
+
+        if not self.classes:
+            logging.warning('Все токены закончились!')
+            return
+        
+        self.availible_model = self.classes[0]
+        return True
+
+    async def _auto_restore_model(self, key: str):
+        """Задача: через 24 часа вернуть модель обратно"""
+        logging.info(f'Вернем {key} через 24 часа')
+        await asyncio.sleep(self.RESTORE_DELAY)
+        await self.return_model(key)
+
+    async def return_model(self, key):
+        """Возвращает модель вручную или после таймера"""
+        if key not in self.timeout:
+            return
+
+        model = self.timeout.pop(key)
+        self.classes.append(model)
+
+        task = self.restore_tasks.pop(key, None)
+        
+        if task and not task.done():
+            logging.info(f'Вернули {key}')
+            task.cancel()
+        

@@ -43,12 +43,27 @@ async def handle_message(message: Message, state: FSMContext):
     manager = ModelManager()
     
     model: Model|None = manager.availible_model
+    
+    
+    if model.for_use is None:
+        for _ in range(10):
+            ok = await manager.next_model_or_no()
+            if ok:
+                model = manager.availible_model
+                break
+        else:
+            await message.answer(
+                'К сожалению, на данный момент модели недоступны. Подождите 1 день.'
+            )
+            return
+        
     response = await model.send_message(message=message.text, user_id=message.from_user.id)
     formated = await asyncio.to_thread(convert_markdown_to_telegram, response)
     
     await state.clear()
     await message.answer(
-        text=formated
+        text=formated,
+        parse_mode='MarkdownV2'
     )
     
 

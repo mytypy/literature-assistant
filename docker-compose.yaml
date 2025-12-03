@@ -9,6 +9,10 @@ services:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
   
+  assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
 
 volumes:
   redis_data:
