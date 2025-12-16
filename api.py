@@ -78,15 +78,15 @@ class Model:
 
     
     async def __delete(self):
-        logging.info(f'{self.current_model, self.available_models}')
         self.available_models.remove(self.current_model)
+        logging.info(f'{self.current_model, self.available_models}')
+        logging.info(f'{self.api_key, self.for_use}')
         
-        if len(self.available_models) == 0:
+        if len(self.available_models) in (1, 0):
             self.for_use = False
-            self.available_models = None
+            self.current_model = None
         else:
-            self.current_model = self.available_models[0]
-            logging.info(self.current_model)
+            self.current_model = self.available_models[-1]
             
     async def _convert(self, message: str, user_id: int):
         memory = Memory()
@@ -132,7 +132,7 @@ class Model:
             
             return text
         else:
-            return 'На данный момент я испытываю технические трудности. Если что-то не так, то обратитесь к @mytypy'
+            return 'Пожалуйста, повторите запрос'
     
     def __repr__(self):
         return f'<Token: {self.api_key} | Availible: {self.for_use}>'

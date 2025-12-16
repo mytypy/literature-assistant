@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiogram import Router, F
 from aiogram.utils.chat_action import ChatActionSender
@@ -36,6 +37,10 @@ async def set_or_wait(message: Message, state: FSMContext):
             
 @router.message(F.text)
 async def handle_message(message: Message, state: FSMContext):
+    await message.answer(
+        text='На данный момент, у нас небольшие технические неполадки 😔'
+    )
+    return
     result = await set_or_wait(message=message, state=state)
 
     if result == 'Sended':
@@ -43,10 +48,11 @@ async def handle_message(message: Message, state: FSMContext):
     
     manager = ModelManager()
     
-    model: Model|None = manager.availible_model
+    model: Model|False = manager.availible_model
+    logging.info(model.for_use)
     
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id, interval=3, initial_sleep=1):
-        if model.for_use is None:
+        if model.for_use is False:
             for _ in range(10):
                 ok = await manager.next_model_or_no()
                 if ok:
@@ -57,15 +63,16 @@ async def handle_message(message: Message, state: FSMContext):
                     'К сожалению, на данный момент модели недоступны. Подождите 1 день.'
                 )
                 return
-            
-        response = await model.send_message(message=message.text, user_id=message.from_user.id)
-        formated = await asyncio.to_thread(convert_markdown_to_telegram, response)
         
-        await state.clear()
-        await message.answer(
-            text=formated,
-            parse_mode='MarkdownV2'
-        )
+        async with asyncio.Semaphore(5):
+            response = await model.send_message(message=message.text, user_id=message.from_user.id)
+            formated = await asyncio.to_thread(convert_markdown_to_telegram, response)
+            
+            await state.clear()
+            await message.answer(
+                text=formated,
+                parse_mode='MarkdownV2'
+            )
     
 
 @router.message(F.photo)
