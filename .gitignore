@@ -175,3 +175,4 @@ cython_debug/
 .docker-compose.yml
 .Dockerfile
 static/
+.constants.py

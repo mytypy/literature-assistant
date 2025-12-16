@@ -61,20 +61,19 @@ class Model:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.current_model}:generateContent"
         
         async with httpx.AsyncClient(timeout=60) as client:
-            try:
-                resp = await client.post(
-                    url,
-                    headers={"x-goog-api-key": self.api_key},
-                    json=messages
-                )
-
-                logging.info(f"STATUS: {resp.status_code}")
-
-                return resp.json()
-            except Exception as er:
-                logging.error(repr(er))
+            resp = await client.post(
+                url,
+                headers={"x-goog-api-key": self.api_key},
+                json=messages
+            )
+            logging.info(f"STATUS: {resp.status_code}")
+            
+            if resp.status_code != 200:
                 await self.__delete()
                 return dict()
+
+            return resp.json()
+                
 
     
     async def __delete(self):

@@ -2,7 +2,7 @@ import logging
 import asyncio
 
 
-from aiogram import F, Dispatcher, Bot
+from aiogram import Dispatcher, Bot
 from aiogram.types import Message
 from aiogram.filters.command import CommandStart
 from chat.user import router as user_router
