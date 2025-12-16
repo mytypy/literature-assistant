@@ -78,7 +78,7 @@ class Model:
 
     
     async def __delete(self):
-        logging.info(self.current_model, self.available_models)
+        logging.info(f'{self.current_model, self.available_models}')
         self.available_models.remove(self.current_model)
         
         if len(self.available_models) == 0:
