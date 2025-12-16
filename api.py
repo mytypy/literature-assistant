@@ -70,13 +70,15 @@ class Model:
             
             if resp.status_code != 200:
                 await self.__delete()
-                return await self.__request(messages=messages)
+                return dict()
+                # return await self.__request(messages=messages)
 
             return resp.json()
                 
 
     
     async def __delete(self):
+        logging.info(self.current_model, self.available_models)
         self.available_models.remove(self.current_model)
         
         if len(self.available_models) == 0:
@@ -84,7 +86,8 @@ class Model:
             self.available_models = None
         else:
             self.current_model = self.available_models[0]
-    
+            logging.info(self.current_model)
+            
     async def _convert(self, message: str, user_id: int):
         memory = Memory()
         
