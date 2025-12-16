@@ -70,7 +70,7 @@ class Model:
             
             if resp.status_code != 200:
                 await self.__delete()
-                return dict()
+                return await self.__request(messages=messages)
 
             return resp.json()
                 
